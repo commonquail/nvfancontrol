@@ -36,6 +36,9 @@ use fanflicker::{FanFlickerFix, FanFlickerRange};
 pub mod fanspeedcurve;
 use fanspeedcurve::FanspeedCurve;
 
+pub mod temp_hysteresis;
+use temp_hysteresis::TemperatureHysteron;
+
 const CONF_FILE: &'static str = "nvfancontrol.conf";
 const MIN_VERSION: f32 = 352.09;
 const DEFAULT_PORT: u32 = 12125;
@@ -73,6 +76,7 @@ struct NVFanManager {
     on_time: Option<f64>,
     force: bool,
     fanflicker: Option<FanFlickerFix>,
+    temp_hysteron: TemperatureHysteron,
 }
 
 impl Drop for NVFanManager {
@@ -87,6 +91,7 @@ impl Drop for NVFanManager {
 impl NVFanManager {
     fn new(
         gpu: u32,
+        temp_hysteron: TemperatureHysteron,
         curve: FanspeedCurve,
         force: bool,
         limits: Option<(u16, u16)>,
@@ -121,12 +126,14 @@ impl NVFanManager {
                 None => None
             },
             ctrl: ctrl,
+            temp_hysteron: temp_hysteron,
         };
 
         Ok(ret)
     }
 
     fn set_fans(&self, speed: i32) -> Result<(), String> {
+        debug!("setting fan={}...", speed);
         self.ctrl.set_ctrl_type(self.gpu, NVCtrlFanControlState::Manual)?;
         let coolers = &*self.ctrl.gpu_coolers(self.gpu)?;
         for c in coolers {
@@ -142,13 +149,15 @@ impl NVFanManager {
 
     fn update(&mut self) -> Result<(), String> {
 
-        let temp = self.ctrl.get_temp(self.gpu)?;
         let ctrl_status = self.ctrl.get_ctrl_status(self.gpu)?;
         let coolers = &*self.ctrl.gpu_coolers(self.gpu)?;
 
         if coolers.len() == 0 {
             return Err("No coolers available to adjust".to_string());
         }
+
+        let temp = self.ctrl.get_temp(self.gpu)?;
+        let temp = self.temp_hysteron.get_temp(temp);
 
         let rpm = self.ctrl.get_fanspeed_rpm(self.gpu, coolers[0])?;
 
@@ -667,7 +676,17 @@ pub fn main() {
         None => None,
     };
 
-    let mut mgr = match NVFanManager::new(gpu, curve, force_update, limits, fanflickerrange) {
+    // Fairly arbitrary, but common in conversations about the topic.
+    let hysteresis = 5;
+    let temp_hysteron = TemperatureHysteron::with_offset(hysteresis).unwrap();
+
+    let mut mgr = match NVFanManager::new(
+        gpu,
+        temp_hysteron,
+        curve,
+        force_update,
+        limits,
+        fanflickerrange) {
         Ok(m) => m,
         Err(s) => {
             error!("{}", s);
