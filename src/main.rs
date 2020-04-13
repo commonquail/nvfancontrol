@@ -142,7 +142,7 @@ impl NVFanManager {
 
     fn update(&mut self) -> Result<(), String> {
 
-        let temp = self.ctrl.get_temp(self.gpu)? as u16;
+        let temp = self.ctrl.get_temp(self.gpu)?;
         let ctrl_status = self.ctrl.get_ctrl_status(self.gpu)?;
         let coolers = &*self.ctrl.gpu_coolers(self.gpu)?;
 
@@ -162,7 +162,7 @@ impl NVFanManager {
             };
         }
 
-        let speed = self.curve.speed_y(temp);
+        let speed = self.curve.speed_y(temp as u16);
 
         match (speed, self.on_time, &mut self.fanflicker) {
             (Some(y), _, None) => {
