@@ -349,6 +349,10 @@ fn make_options() -> Options {
         "Comma separated lower and upper limits, use 0 to disable,
         default: 20,80", "LOWER,UPPER");
     opts.optopt("g", "gpu", "GPU to adjust; must be >= 0", "GPU");
+    opts.optopt("", "temp-hysteresis", 
+        "Enable temperature hysteresis. Temperature must drop this many degrees\
+        relative to the temperature at the most recent increase before the fan\
+        slows down again; must be >= 0", "DEGREES");
     opts.optflag("p", "print-coolers", "Print available GPUs and coolers");
     opts.optflag("f", "force", "Always use the custom curve even if the fan is
                  already spinning in auto mode");
@@ -590,6 +594,29 @@ pub fn main() {
     );
 
 
+    let hysteresis = matches.opt_process_or_default(
+        "temp-hysteresis",
+        |arg: &str| {
+            match arg.parse::<i32>() {
+                Ok(v) => {
+                    if v < 0 {
+                        error!("Invalid hysteresis offset: {}; min: 0", v);
+                        process::exit(1);
+                    };
+                    v
+                },
+                Err(e) => {
+                    error!(
+                        "Option \"--temp-hysteresis\" present but non-valid: \"{}\": {}",
+                        e,
+                        arg);
+                    process::exit(1);
+                }
+            }
+        },
+        0
+    );
+
     let gpu = matches.opt_process_or_default(
         "g",
         |arg: &str| {
@@ -676,9 +703,8 @@ pub fn main() {
         None => None,
     };
 
-    // Fairly arbitrary, but common in conversations about the topic.
-    let hysteresis = 5;
-    let temp_hysteron = TemperatureHysteron::with_offset(hysteresis).unwrap();
+    let temp_hysteron = TemperatureHysteron::with_offset(hysteresis)
+        .expect("opt parsing guarantees valid input");
 
     let mut mgr = match NVFanManager::new(
         gpu,
