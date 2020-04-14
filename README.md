@@ -147,6 +147,25 @@ flickering prevention will kick in. As an example for `min = 11` and `max = 38`
 curve changes are applied gradually. Above `38%` behaviour is normal and
 arbitrary jumps are again allowed.
 
+### Temperature hysteresis
+
+This version of nvfancontrol offers temperature [hysteresis][url-hysteresis]
+similar to the functionality offered by _MSI Afterburner_ for Windows. The
+behaviour implemented here can be loosely described by the following operator:
+
+           / x     if x >= beta
+    y(x) = | x     if x <= alpha
+           \ beta  if alpha < x < beta
+
+It is a very naive implementation but has performed quite well over several
+months.
+
+For more information on how hysteresis works, see
+
+- [the Preisach model][url-preisach]
+- [an explanation by _MSI Afterburner_'s author][url-afterburner]
+- [an explanation by a redditor][url-reddit]
+
 Bugs and known issues
 ---------------------
 Although nvfancontrol should work with most Fermi or newer NVidia cards it has
@@ -169,3 +188,8 @@ License
 -------
 This project is licensed under the
 [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html) or any newer.
+
+[url-afterburner]: https://forums.guru3d.com/threads/temperature-hysteresis.329435/#post-3715485 "MSI Afterburner's author's explanation of hysteresis"
+[url-hysteresis]: https://en.wikipedia.org/wiki/Hysteresis "Wikipedia: Hysteresis"
+[url-preisach]: https://en.wikipedia.org/wiki/Preisach_model_of_hysteresis "Wikipedia: Preisach model of hysteresis"
+[url-reddit]: https://www.reddit.com/r/nvidia/comments/6ajh1d/how_to_create_better_0db_fan_curve/dhfcn6c/ "Redditor's explanation of hysteresis"
