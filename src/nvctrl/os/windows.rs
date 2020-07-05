@@ -14,6 +14,7 @@ const NVAPI_SHORT_STRING_MAX: usize = 64;
 const NVAPI_MAX_PHYSICAL_GPUS: usize = 64;
 const NVAPI_MAX_THERMAL_SENSORS_PER_GPU: usize = 3;
 const NVAPI_MAX_COOLERS_PER_GPU: usize = 3;
+const NVAPI_CLIENT_MAX_COOLERS_PER_GPU: usize = 32;
 const NVAPI_MAX_USAGES_PER_GPU: usize = 33;
 const NVAPI_COOLER_TARGET_ALL: usize = 7;
 
@@ -179,6 +180,76 @@ unsafe fn NvAPI_GPU_GetUsages(handle: NvPhysicalGpuHandlePtr, usages: *mut NvGpu
     func(handle, usages)
 }
 
+/// Retrieves cooler information using the new client API. This is an undocumented function.
+///
+/// **Arguments**
+///
+/// * `handle` - The GPU for which the utilisation is requested
+/// * `usages` - The `NvGpuFanCoolersInfo` containing the requested information; it will be
+/// populated upon function call
+#[allow(non_snake_case)]
+unsafe fn NvAPI_GPU_GetClientFanCoolersInfo(handle: NvPhysicalGpuHandlePtr,
+    infos: *mut NvGpuFanCoolersInfo) -> libc::c_int {
+
+    let func = mem::transmute::<
+        *const(), fn(NvPhysicalGpuHandlePtr, *mut NvGpuFanCoolersInfo) -> libc::c_int
+    >(NvAPI_QueryInterface(QueryCode::ClientFanCoolersGetInfo as QueryPtr));
+    func(handle, infos)
+}
+
+/// Retrieves cooler status using the new client API. This is an undocumented function.
+///
+/// **Arguments**
+///
+/// * `handle` - The GPU for which the utilisation is requested
+/// * `usages` - The `NvGpuFanCoolersStatus` containing the requested information; it
+/// will be populated upon function call
+#[allow(non_snake_case)]
+unsafe fn NvAPI_GPU_GetClientFanCoolersStatus(handle: NvPhysicalGpuHandlePtr,
+    status: *mut NvGpuFanCoolersStatus) -> libc::c_int {
+
+    let func = mem::transmute::<
+        *const(), fn(NvPhysicalGpuHandlePtr, *mut NvGpuFanCoolersStatus) -> libc::c_int
+    >(NvAPI_QueryInterface(QueryCode::ClientFanCoolersGetStatus as QueryPtr));
+    func(handle, status)
+}
+
+/// Retrieves cooler control mode using the new client API. This is an
+/// undocumented function.
+///
+/// **Arguments**
+///
+/// * `handle` - The GPU for which the utilisation is requested
+/// * `usages` - The `NvGpuFanCoolersStatus` containing the requested information; it
+/// will be populated upon function call
+#[allow(non_snake_case)]
+unsafe fn NvAPI_GPU_GetClientFanCoolersControl(handle: NvPhysicalGpuHandlePtr,
+    status: *mut NvGpuFanCoolersControl) -> libc::c_int {
+
+    let func = mem::transmute::<
+        *const(), fn(NvPhysicalGpuHandlePtr, *mut NvGpuFanCoolersControl) -> libc::c_int
+    >(NvAPI_QueryInterface(QueryCode::ClientFanCoolersGetControl as QueryPtr));
+    func(handle, status)
+}
+
+/// Sets cooler control mode using the new client API. This is an
+/// undocumented function.
+///
+/// **Arguments**
+///
+/// * `handle` - The GPU for which the utilisation is requested
+/// * `usages` - The `NvGpuFanCoolersStatus` containing the requested information; it
+/// will be populated upon function call
+#[allow(non_snake_case)]
+unsafe fn NvAPI_GPU_SetClientFanCoolersControl(handle: NvPhysicalGpuHandlePtr,
+    status: *mut NvGpuFanCoolersControl) -> libc::c_int {
+
+    let func = mem::transmute::<
+        *const(), fn(NvPhysicalGpuHandlePtr, *mut NvGpuFanCoolersControl) -> libc::c_int
+    >(NvAPI_QueryInterface(QueryCode::ClientFanCoolersSetControl as QueryPtr));
+    func(handle, status)
+}
+
 /// A representation of the NvAPI_ShortString. It is an array of `c_char` with a predefined length.
 #[repr(C)]
 struct NvAPI_ShortString {
@@ -318,6 +389,18 @@ enum NV_COOLER_POLICY {
     DEFAULT = 32,
 }
 
+
+/// Cooler control mode (client API)
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+#[allow(non_came_case_types)]
+#[allow(dead_code)]
+enum NV_COOLER_CONTROL_MODE {
+    AUTO = 0,
+    MANUAL = 1,
+}
+
+
 /// The level (in %) for a GPU cooler
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -425,6 +508,126 @@ impl NvGpuCoolerSettings {
         }
     }
 }
+
+/// Single cooler information (for client API)
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+struct NvFanCoolerInfo {
+    id: u32,
+    _reserved1: u32,
+    _reserved2: u32,
+    max_rpm: u32,
+    _reserved3: [u32; 8]
+}
+
+impl NvFanCoolerInfo {
+    unsafe fn zeroed() -> Self {
+        mem::zeroed()
+    }
+}
+
+/// GPU cooler information (for client API)
+#[repr(C)]
+struct NvGpuFanCoolersInfo {
+    version: u32,
+    _reserved1: u32,
+    count: u32,
+    _reserved2: [u32; 8],
+    coolers: [NvFanCoolerInfo; NVAPI_CLIENT_MAX_COOLERS_PER_GPU]
+}
+
+impl NvGpuFanCoolersInfo {
+    fn new() -> NvGpuFanCoolersInfo {
+        NvGpuFanCoolersInfo {
+            version: NVAPI_VERSION::<NvGpuFanCoolersInfo>(1u32),
+            _reserved1: 0,
+            count: 0,
+            _reserved2: [0u32; 8],
+            coolers: [ unsafe { NvFanCoolerInfo::zeroed() };
+                NVAPI_CLIENT_MAX_COOLERS_PER_GPU]
+        }
+    }
+}
+
+/// Single cooler status (rpm, levels, etc.) using the new client API
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+struct NvFanCoolerStatus {
+    id: u32,
+    rpm: u32,
+    minimum: u32,
+    maximum: u32,
+    level: u32,
+    _reserved: [u32; 8]
+}
+
+impl NvFanCoolerStatus {
+    unsafe fn zeroed() -> Self {
+        mem::zeroed()
+    }
+}
+
+/// GPU cooler status (rpm, levels, etc.) using the new client API
+#[repr(C)]
+struct NvGpuFanCoolersStatus {
+    version: u32,
+    count: u32,
+    _reserved: [u32; 8],
+    coolers: [NvFanCoolerStatus; NVAPI_CLIENT_MAX_COOLERS_PER_GPU]
+}
+
+impl NvGpuFanCoolersStatus {
+    fn new() -> NvGpuFanCoolersStatus {
+        NvGpuFanCoolersStatus {
+            version: NVAPI_VERSION::<NvGpuFanCoolersStatus>(1u32),
+            count: 0,
+            _reserved: [0u32; 8],
+            coolers: [ unsafe { NvFanCoolerStatus::zeroed() };
+                NVAPI_CLIENT_MAX_COOLERS_PER_GPU]
+        }
+    }
+}
+
+
+/// Fan control structure (new client API)
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+struct NvFanCoolerControl {
+    id: u32,
+    level: u32,
+    mode: NV_COOLER_CONTROL_MODE,
+    _reserved: [u32; 8]
+}
+
+impl NvFanCoolerControl {
+    unsafe fn zeroed() -> Self {
+        mem::zeroed()
+    }
+}
+
+/// GPU Fan control (new client API)
+#[repr(C)]
+struct NvGpuFanCoolersControl {
+    version: u32,
+    _reserved1: u32,
+    count: u32,
+    _reserved2: [u32; 8],
+    coolers: [NvFanCoolerControl; NVAPI_CLIENT_MAX_COOLERS_PER_GPU]
+}
+
+impl NvGpuFanCoolersControl {
+    fn new() -> NvGpuFanCoolersControl {
+        NvGpuFanCoolersControl {
+            version: NVAPI_VERSION::<NvGpuFanCoolersControl>(1u32),
+            _reserved1: 0u32,
+            count: 0u32,
+            _reserved2: [0u32; 8],
+            coolers: [ unsafe { NvFanCoolerControl::zeroed() };
+                NVAPI_CLIENT_MAX_COOLERS_PER_GPU]
+        }
+    }
+}
+
 
 /// GPU utilisation
 #[repr(C)]
