@@ -98,3 +98,7 @@ daemon-edit: daemon-install
 
 $(systemd_unit_user):
 	cp $(@F) $@
+
+.PHONY: conf-edit
+conf-edit:
+	$(EDITOR) $(HOME)/.config/$(bin).conf
