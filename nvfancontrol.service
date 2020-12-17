@@ -1,0 +1,13 @@
+[Unit]
+Description=Nvidia Dynamic Fan Control
+PartOf=graphical-session.target
+StartLimitIntervalSec=1
+StartLimitBurst=5
+
+[Service]
+Type=simple
+Restart=on-failure
+ExecStart=%h/.local/bin/nvfancontrol --force --limits 0 --temp-hysteresis 10
+
+[Install]
+WantedBy=default.target
