@@ -6,5 +6,7 @@ target/*
 *.la
 *.lo
 *.o
+driver_version.mk
 nvapi*.lib
+nvidia-settings-*
 src/nvctrl/target/*
