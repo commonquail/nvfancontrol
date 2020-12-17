@@ -22,6 +22,8 @@ libxnvctrl = $(LIBRARY_PATH)/libXNVCtrl.a
 
 alldeps = $(libxnvctrl) $(sources)
 
+systemd_unit_user = $(HOME)/.config/systemd/user/$(bin).service
+
 .PHONY: build
 build: $(debug_bin)
 
@@ -62,3 +64,37 @@ clobber:
 .PHONY: install
 install: $(release_bin)
 	install -m 0775 $(release_bin) $(HOME)/.local/bin/
+
+.PHONY: daemon-install
+daemon-install: $(systemd_unit_user)
+
+.PHONY: daemon-status
+daemon-status:
+	systemctl --user status $(bin)
+
+.PHONY: daemon-restart
+daemon-restart:
+	systemctl --user restart $(bin)
+
+.PHONY: daemon-start
+daemon-start:
+	systemctl --user start $(bin)
+
+.PHONY: daemon-stop
+daemon-stop:
+	systemctl --user stop $(bin)
+
+.PHONY: daemon-reload
+daemon-reload:
+	systemctl --user daemon-reload
+
+.PHONY: daemon-tail
+daemon-tail:
+	journalctl --user --utc --pager-end --follow --unit $(bin) --output short-iso --since today
+
+.PHONY: daemon-edit
+daemon-edit: daemon-install
+	$(EDITOR) $(systemd_unit_user)
+
+$(systemd_unit_user):
+	cp $(@F) $@
