@@ -22,7 +22,7 @@ jobs:
         include:
           - build: pinned-linux
             os: ubuntu-18.04
-            rust: 1.36.0
+            rust: 1.41.1
 
           - build: stable
             os: ubuntu-18.04
@@ -34,7 +34,7 @@ jobs:
 
           - build: pinned-windows
             os: windows-2019
-            rust: 1.40.0
+            rust: 1.41.1
     env:
       # libXNVCtrl.a in Ubuntu
       LIBRARY_PATH: /usr/lib/x86_64-linux-gnu
