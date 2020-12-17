@@ -113,6 +113,13 @@ impl NVFanManager {
             return Err(format!("GPU id {} is not valid; min: 0 max: {}", gpu, gpu_count-1));
         }
 
+        if let Err(e) = ctrl.get_ctrl_status(gpu) {
+            return Err(format!(
+                r#"Could not get GPU control status (did you enable "Coolbits"?): {}"#,
+                e
+            ));
+        }
+
         let ret = NVFanManager {
             gpu: gpu,
             curve: curve,
