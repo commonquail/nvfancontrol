@@ -137,7 +137,7 @@ fn test_invalid_toml_from_string() {
     assert!(cfg.is_err());
 
     if let Err(msg) = cfg {
-        assert!(msg.find("invalid number").is_some());
+        assert!(msg.find("invalid").is_some());
     } else {
         assert!(false, "parsing should have failed");
     }
